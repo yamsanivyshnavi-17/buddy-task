@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BuddyTask Manager - Peer Collaboration & Task Tracking</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#fdf4ff', 100: '#fae8ff', 500: '#d946ef', 600: '#c026d3', 700: '#a21caf' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .drag-over { background-color: rgba(217, 70, 239, 0.1) !important; border-style: dashed !important; border-color: #d946ef !important; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- AUTHENTICATION SCREEN -->
+    <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-200 dark:border-slate-700">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-500 text-white text-2xl font-bold shadow-lg shadow-brand-500/30 mb-4">
+                    <i class="fa-solid fa-user-group"></i>
+                </div>
+                <h1 class="text-2xl font-bold">BuddyTask Manager</h1>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Sign in to collaborate with your task buddies</p>
+            </div>
+
+            <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Your Name</label>
+                    <input type="text" id="auth-name" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none transition text-sm" placeholder="Jordan Lee">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Email Address</label>
+                    <input type="email" id="auth-email" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none transition text-sm" placeholder="jordan@buddytask.com">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Primary Task Buddy</label>
+                    <select id="auth-buddy" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none transition text-sm">
+                        <option value="Taylor Swift">Taylor Swift (Co-Worker)</option>
+                        <option value="Sam Smith">Sam Smith (Project Partner)</option>
+                        <option value="Alex Chen">Alex Chen (Reviewer)</option>
+                        <option value="Morgan Reed">Morgan Reed (Team Lead)</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full mt-2 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition">
+                    Start Collaborating <i class="fa-solid fa-arrow-right ml-2"></i>
+                </button>
+            </form>
+            <div class="mt-6 text-center">
+                <button onclick="fillDemoUser()" class="text-xs text-brand-500 hover:underline font-medium">⚡ Click to quick-fill demo buddy profile</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="app-wrapper" class="flex h-screen overflow-hidden">
+        
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col z-30 transition-all duration-300 -translate-x-full md:translate-x-0 fixed md:static inset-y-0 left-0">
+            <!-- Brand Logo -->
+            <div class="h-16 flex items-center px-6 border-b border-slate-200 dark:border-slate-700">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-xl bg-brand-500 text-white flex items-center justify-center font-bold shadow-md shadow-brand-500/20">
+                        <i class="fa-solid fa-user-group"></i>
+                    </div>
+                    <span class="font-bold text-lg tracking-tight">BuddyTask</span>
+                </div>
+                <button onclick="toggleSidebar()" class="md:hidden ml-auto text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+                <div>
+                    <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Buddy Workspace</p>
+                    <nav class="space-y-1">
+                        <button onclick="switchView('dashboard')" id="nav-dashboard" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-medium text-sm transition bg-brand-50 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400">
+                            <i class="fa-solid fa-house w-5"></i>
+                            <span>Dashboard</span>
+                        </button>
+                        <button onclick="switchView('kanban')" id="nav-kanban" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-medium text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+                            <i class="fa-solid fa-kanban w-5"></i>
+                            <span>Buddy Kanban</span>
+                        </button>
+                        <button onclick="switchView('list')" id="nav-list" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-medium text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+                            <i class="fa-solid fa-list-check w-5"></i>
+                            <span>All Tasks</span>
+                        </button>
+                    </nav>
+                </div>
+
+                <div>
+                    <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Projects</p>
+                    <div id="project-list" class="space-y-1">
+                        <!-- Dynamically populated projects -->
+                    </div>
+                    <button onclick="openProjectModal()" class="w-full mt-2 flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-medium text-dashed border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30 text-slate-500 transition">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>New Project</span>
+                    </button>
+                </div>
+
+                <div>
+                    <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Priority Filter</p>
+                    <div class="space-y-1 text-sm">
+                        <button onclick="filterByPriority('all')" class="w-full text-left px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50">All Priorities</button>
+                        <button onclick="filterByPriority('Urgent')" class="w-full text-left px-3 py-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center"><span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span> Urgent</button>
+                        <button onclick="filterByPriority('High')" class="w-full text-left px-3 py-1.5 rounded-lg text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/30 flex items-center"><span class="w-2 h-2 rounded-full bg-orange-500 mr-2"></span> High</button>
+                        <button onclick="filterByPriority('Medium')" class="w-full text-left px-3 py-1.5 rounded-lg text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-950/30 flex items-center"><span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span> Medium</button>
+                        <button onclick="filterByPriority('Low')" class="w-full text-left px-3 py-1.5 rounded-lg text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30 flex items-center"><span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span> Low</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Footer Profile -->
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div class="flex items-center space-x-3 overflow-hidden">
+                    <div id="user-avatar" class="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-300 font-bold flex items-center justify-center shrink-0">JL</div>
+                    <div class="overflow-hidden">
+                        <h4 id="display-user-name" class="font-semibold text-sm truncate">Jordan Lee</h4>
+                        <p id="display-buddy-name" class="text-xs text-slate-400 truncate">Buddy: Taylor Swift</p>
+                    </div>
+                </div>
+                <button onclick="logout()" title="Logout" class="text-slate-400 hover:text-red-500 transition p-2">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <div class="flex-1 flex flex-col h-screen overflow-hidden">
+            
+            <!-- TOP NAVBAR -->
+            <header class="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 z-20 shrink-0">
+                <div class="flex items-center space-x-4">
+                    <button onclick="toggleSidebar()" class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 md:hidden">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <div class="relative w-64 md:w-80">
+                        <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="text" id="global-search" oninput="handleSearch(this.value)" placeholder="Search tasks by title or buddy..." class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-900 border-none rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <!-- Theme Toggle -->
+                    <button onclick="toggleTheme()" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                        <i id="theme-icon" class="fa-solid fa-moon"></i>
+                    </button>
+
+                    <!-- Buddy Sync Status -->
+                    <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400 rounded-xl text-xs font-medium border border-brand-200 dark:border-brand-900">
+                        <span class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
+                        <span>Buddy Sync Active</span>
+                    </div>
+
+                    <!-- Create Task Button -->
+                    <button onclick="openTaskModal()" class="flex items-center space-x-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-md shadow-brand-600/20 transition">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>New Task</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- VIEW CONTAINER -->
+            <main class="flex-1 overflow-y-auto p-6 bg-slate-50 dark:bg-slate-900 relative" id="main-content">
+                
+                <!-- 1. DASHBOARD VIEW -->
+                <div id="view-dashboard" class="space-y-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h1 id="welcome-banner" class="text-2xl font-bold tracking-tight">Buddy Dashboard</h1>
+                            <p class="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Track tasks assigned with your partner and review team progress.</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="text-xs text-slate-400 bg-white dark:bg-slate-800 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 font-medium" id="current-date-display">Oct 10, 2026</span>
+                        </div>
+                    </div>
+
+                    <!-- Metric Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl font-bold">
+                                <i class="fa-solid fa-list-check"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400 uppercase font-semibold">Total Tasks</p>
+                                <h3 id="stat-total" class="text-2xl font-bold mt-0.5">0</h3>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl font-bold">
+                                <i class="fa-solid fa-spinner"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400 uppercase font-semibold">In Progress</p>
+                                <h3 id="stat-inprogress" class="text-2xl font-bold mt-0.5">0</h3>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl font-bold">
+                                <i class="fa-solid fa-eye"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400 uppercase font-semibold">Needs Review</p>
+                                <h3 id="stat-review" class="text-2xl font-bold mt-0.5">0</h3>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl font-bold">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400 uppercase font-semibold">Completed</p>
+                                <h3 id="stat-completed" class="text-2xl font-bold mt-0.5">0</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar & Buddy Activity Feed -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-bold text-lg">Buddy Partnership Progress</h3>
+                                <span id="completion-percentage" class="text-brand-600 font-bold text-lg">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 dark:bg-slate-700 h-4 rounded-full overflow-hidden">
+                                <div id="completion-bar" class="bg-brand-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                            <div class="pt-4 border-t border-slate-100 dark:border-slate-700">
+                                <h4 class="font-semibold text-sm mb-3">Quick Buddy Actions</h4>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    <button onclick="openTaskModal()" class="p-3 bg-slate-50 dark:bg-slate-700/50 hover:bg-brand-50 hover:text-brand-600 rounded-xl text-left transition border border-slate-200 dark:border-slate-600">
+                                        <i class="fa-solid fa-plus-circle text-brand-500 mb-1"></i>
+                                        <p class="font-semibold text-xs">Assign Task</p>
+                                    </button>
+                                    <button onclick="switchView('kanban')" class="p-3 bg-slate-50 dark:bg-slate-700/50 hover:bg-brand-50 hover:text-brand-600 rounded-xl text-left transition border border-slate-200 dark:border-slate-600">
+                                        <i class="fa-solid fa-kanban text-brand-500 mb-1"></i>
+                                        <p class="font-semibold text-xs">Buddy Kanban</p>
+                                    </button>
+                                    <button onclick="openProjectModal()" class="p-3 bg-slate-50 dark:bg-slate-700/50 hover:bg-brand-50 hover:text-brand-600 rounded-xl text-left transition border border-slate-200 dark:border-slate-600">
+                                        <i class="fa-solid fa-folder-plus text-brand-500 mb-1"></i>
+                                        <p class="font-semibold text-xs">New Project</p>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Buddy Activity Feed -->
+                        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                            <h3 class="font-bold text-lg mb-4">Buddy Activity Feed</h3>
+                            <div id="activity-feed" class="flex-1 overflow-y-auto space-y-4 max-h-[260px] pr-2">
+                                <!-- Dynamic activity logs -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. KANBAN BOARD VIEW -->
+                <div id="view-kanban" class="hidden h-full flex flex-col">
+                    <div class="flex items-center justify-between mb-6 shrink-0">
+                        <div>
+                            <h1 class="text-2xl font-bold tracking-tight">Buddy Kanban Board</h1>
+                            <p class="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Drag tasks across workflow stages from To Do to Buddy Review & Done.</p>
+                        </div>
+                        <button onclick="openTaskModal()" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-md transition">
+                            <i class="fa-solid fa-plus mr-1"></i> Add Task
+                        </button>
+                    </div>
+
+                    <!-- Kanban Columns Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 flex-1 overflow-x-auto pb-4 items-start">
+                        <!-- To Do -->
+                        <div class="bg-slate-100 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 flex flex-col h-[calc(100vh-14rem)]">
+                            <div class="flex items-center justify-between mb-3 px-1 shrink-0">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-3 h-3 rounded-full bg-slate-400"></span>
+                                    <h3 class="font-bold text-sm">To Do</h3>
+                                    <span id="count-todo" class="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-xs font-bold rounded-full">0</span>
+                                </div>
+                                <button onclick="openTaskModal('To Do')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                            <div id="kanban-todo" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)" ondrop="dropTask(event, 'To Do')" class="flex-1 overflow-y-auto space-y-3 pr-1 rounded-xl transition"></div>
+                        </div>
+
+                        <!-- In Progress -->
+                        <div class="bg-slate-100 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 flex flex-col h-[calc(100vh-14rem)]">
+                            <div class="flex items-center justify-between mb-3 px-1 shrink-0">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                                    <h3 class="font-bold text-sm">In Progress</h3>
+                                    <span id="count-inprogress" class="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-xs font-bold rounded-full">0</span>
+                                </div>
+                                <button onclick="openTaskModal('In Progress')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                            <div id="kanban-inprogress" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)" ondrop="dropTask(event, 'In Progress')" class="flex-1 overflow-y-auto space-y-3 pr-1 rounded-xl transition"></div>
+                        </div>
+
+                        <!-- Review -->
+                        <div class="bg-slate-100 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 flex flex-col h-[calc(100vh-14rem)]">
+                            <div class="flex items-center justify-between mb-3 px-1 shrink-0">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                                    <h3 class="font-bold text-sm">Buddy Review</h3>
+                                    <span id="count-review" class="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-xs font-bold rounded-full">0</span>
+                                </div>
+                                <button onclick="openTaskModal('Review')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                            <div id="kanban-review" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)" ondrop="dropTask(event, 'Review')" class="flex-1 overflow-y-auto space-y-3 pr-1 rounded-xl transition"></div>
+                        </div>
+
+                        <!-- Completed -->
+                        <div class="bg-slate-100 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 flex flex-col h-[calc(100vh-14rem)]">
+                            <div class="flex items-center justify-between mb-3 px-1 shrink-0">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                                    <h3 class="font-bold text-sm">Completed</h3>
+                                    <span id="count-completed" class="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-xs font-bold rounded-full">0</span>
+                                </div>
+                                <button onclick="openTaskModal('Completed')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                            <div id="kanban-completed" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)" ondrop="dropTask(event, 'Completed')" class="flex-1 overflow-y-auto space-y-3 pr-1 rounded-xl transition"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. LIST / TABLE VIEW -->
+                <div id="view-list" class="hidden space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold tracking-tight">Task List</h1>
+                            <p class="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Tabular overview of tasks with assigned partners and buddies.</p>
+                        </div>
+                        <button onclick="openTaskModal()" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-md transition">
+                            <i class="fa-solid fa-plus mr-1"></i> New Task
+                        </button>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                        <th class="py-4 px-6">Task Title</th>
+                                        <th class="py-4 px-6">Project</th>
+                                        <th class="py-4 px-6">Status</th>
+                                        <th class="py-4 px-6">Priority</th>
+                                        <th class="py-4 px-6">Due Date</th>
+                                        <th class="py-4 px-6">Buddy Assignee</th>
+                                        <th class="py-4 px-6 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="task-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50 text-sm">
+                                    <!-- Dynamic table rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- MODAL: CREATE / EDIT TASK -->
+    <div id="task-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
+                <h3 id="task-modal-title" class="font-bold text-lg">Create New Task</h3>
+                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <form id="task-form" onsubmit="saveTask(event)" class="space-y-4">
+                <input type="hidden" id="task-id">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Task Title</label>
+                    <input type="text" id="task-title" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="e.g., Code Review & QA Testing">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Project</label>
+                        <select id="task-project" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <!-- Dynamic projects -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Status</label>
+                        <select id="task-status" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="To Do">To Do</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Review">Buddy Review</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Priority</label>
+                        <select id="task-priority" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Due Date</label>
+                        <input type="date" id="task-duedate" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Buddy Assignee</label>
+                    <input type="text" id="task-assignee" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Partner Name">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Description</label>
+                    <textarea id="task-description" rows="3" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Add details for your buddy..."></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-3">
+                    <button type="button" onclick="closeTaskModal()" class="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-md transition">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CREATE NEW PROJECT -->
+    <div id="project-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
+                <h3 class="font-bold text-lg">Create New Project</h3>
+                <button onclick="closeProjectModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="saveProject(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Project Name</label>
+                    <input type="text" id="project-name-input" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="e.g., Q4 Hackathon">
+                </div>
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" onclick="closeProjectModal()" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold text-sm">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-md">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center space-x-3 border border-slate-700 text-sm">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-message">Action successful!</span>
+    </div>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        // State Management for BuddyTask Manager
+        let currentUser = JSON.parse(localStorage.getItem('buddytask_user')) || null;
+        let projects = JSON.parse(localStorage.getItem('buddytask_projects')) || ['Website Launch', 'Design System', 'API Sync'];
+        let activeProject = localStorage.getItem('buddytask_active_project') || 'All Projects';
+        let priorityFilter = 'all';
+        let searchQuery = '';
+        let currentView = 'dashboard';
+
+        let tasks = JSON.parse(localStorage.getItem('buddytask_tasks')) || [
+            { id: '1', title: 'Pair program authentication module', project: 'Website Launch', status: 'In Progress', priority: 'High', duedate: '2026-10-15', assignee: 'Taylor Swift', description: 'Collaborate on OAuth2 flow and secure token storage.' },
+            { id: '2', title: 'Review Figma wireframes with partner', project: 'Design System', status: 'Review', priority: 'Urgent', duedate: '2026-10-12', assignee: 'Sam Smith', description: 'Verify typography and color tokens adhere to accessibility standards.' },
+            { id: '3', title: 'Write unit tests for REST endpoints', project: 'API Sync', status: 'To Do', priority: 'Medium', duedate: '2026-10-25', assignee: 'Jordan Lee', description: 'Ensure test coverage is above 85%.' },
+            { id: '4', title: 'Setup GitHub Actions CI/CD pipeline', project: 'Website Launch', status: 'Completed', priority: 'Low', duedate: '2026-10-18', assignee: 'Taylor Swift', description: 'Automated test suite configured successfully.' }
+        ];
+
+        let activityLogs = JSON.parse(localStorage.getItem('buddytask_logs')) || [
+            { text: 'Taylor Swift completed "Setup GitHub Actions CI/CD pipeline"', time: '15 mins ago' },
+            { text: 'Sam Smith submitted task for Buddy Review', time: '1 hour ago' },
+            { text: 'New project "Website Launch" initialized', time: 'Yesterday' }
+        ];
+
+        // Initialization on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!currentUser) {
+                document.getElementById('auth-screen').classList.remove('hidden');
+            } else {
+                initApp();
+            }
+            if (localStorage.getItem('buddytask_theme') === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-sun';
+            }
+        });
+
+        function fillDemoUser() {
+            document.getElementById('auth-name').value = 'Jordan Lee';
+            document.getElementById('auth-email').value = 'jordan.lee@buddytask.com';
+            document.getElementById('auth-buddy').value = 'Taylor Swift';
+        }
+
+        function handleAuth(e) {
+            e.preventDefault();
+            const name = document.getElementById('auth-name').value;
+            const email = document.getElementById('auth-email').value;
+            const buddy = document.getElementById('auth-buddy').value;
+
+            currentUser = { name, email, buddy };
+            localStorage.setItem('buddytask_user', JSON.stringify(currentUser));
+            document.getElementById('auth-screen').classList.add('hidden');
+            addLog(`User ${name} signed in with buddy ${buddy}`);
+            initApp();
+            showToast('Welcome to BuddyTask, ' + name + '!');
+        }
+
+        function logout() {
+            localStorage.removeItem('buddytask_user');
+            currentUser = null;
+            document.getElementById('auth-screen').classList.remove('hidden');
+        }
+
+        function initApp() {
+            if (!currentUser) return;
+            document.getElementById('display-user-name').textContent = currentUser.name;
+            document.getElementById('display-buddy-name').textContent = `Buddy: ${currentUser.buddy}`;
+            const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            document.getElementById('user-avatar').textContent = initials;
+            document.getElementById('welcome-banner').textContent = `Welcome back, ${currentUser.name.split(' ')[0]}! 🤝`;
+            document.getElementById('current-date-display').textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            
+            renderProjects();
+            renderTaskProjectDropdown();
+            renderAllViews();
+        }
+
+        // Theme Toggle
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('buddytask_theme', 'light');
+                document.getElementById('theme-icon').className = 'fa-solid fa-moon';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('buddytask_theme', 'dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-sun';
+            }
+        }
+
+        // Sidebar Mobile Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        // Switch Views
+        function switchView(viewName) {
+            currentView = viewName;
+            ['dashboard', 'kanban', 'list'].forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+                document.getElementById(`nav-${v}`).className = "w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-medium text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition";
+            });
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            document.getElementById(`nav-${viewName}`).className = "w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-medium text-sm bg-brand-50 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400 transition";
+            
+            if(window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+            }
+            renderAllViews();
+        }
+
+        // Render Projects in Sidebar
+        function renderProjects() {
+            const container = document.getElementById('project-list');
+            let html = `
+                <button onclick="filterByProject('All Projects')" class="w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition ${activeProject === 'All Projects' ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}">
+                    <i class="fa-solid fa-layer-group w-5 mr-1"></i> All Projects
+                </button>
+            `;
+            projects.forEach(p => {
+                const active = activeProject === p;
+                html += `
+                    <button onclick="filterByProject('${p}')" class="w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition truncate ${active ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}">
+                        <i class="fa-solid fa-folder w-5 mr-1"></i> ${p}
+                    </button>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function filterByProject(projectName) {
+            activeProject = projectName;
+            localStorage.setItem('buddytask_active_project', projectName);
+            renderProjects();
+            renderAllViews();
+        }
+
+        function filterByPriority(priority) {
+            priorityFilter = priority;
+            renderAllViews();
+        }
+
+        function handleSearch(query) {
+            searchQuery = query.toLowerCase();
+            renderAllViews();
+        }
+
+        // Filter Tasks Helper
+        function getFilteredTasks() {
+            return tasks.filter(t => {
+                const matchesProject = activeProject === 'All Projects' || t.project === activeProject;
+                const matchesPriority = priorityFilter === 'all' || t.priority === priorityFilter;
+                const matchesSearch = t.title.toLowerCase().includes(searchQuery) || t.assignee.toLowerCase().includes(searchQuery) || t.description.toLowerCase().includes(searchQuery);
+                return matchesProject && matchesPriority && matchesSearch;
+            });
+        }
+
+        // Render All Views and Stats
+        function renderAllViews() {
+            const fTasks = getFilteredTasks();
+            
+            // Stats
+            const total = fTasks.length;
+            const inProgress = fTasks.filter(t => t.status === 'In Progress').length;
+            const review = fTasks.filter(t => t.status === 'Review').length;
+            const completed = fTasks.filter(t => t.status === 'Completed').length;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-inprogress').textContent = inProgress;
+            document.getElementById('stat-review').textContent = review;
+            document.getElementById('stat-completed').textContent = completed;
+
+            const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+            document.getElementById('completion-percentage').textContent = `${percentage}%`;
+            document.getElementById('completion-bar').style.width = `${percentage}%`;
+
+            // Kanban Render
+            const columns = { 'To Do': 'kanban-todo', 'In Progress': 'kanban-inprogress', 'Review': 'kanban-review', 'Completed': 'kanban-completed' };
+            const counts = { 'To Do': 0, 'In Progress': 0, 'Review': 0, 'Completed': 0 };
+
+            Object.keys(columns).forEach(col => {
+                document.getElementById(columns[col]).innerHTML = '';
+            });
+
+            fTasks.forEach(t => {
+                counts[t.status]++;
+                const card = createKanbanCard(t);
+                const colId = columns[t.status];
+                if(colId) {
+                    document.getElementById(colId).appendChild(card);
+                }
+            });
+
+            Object.keys(counts).forEach(status => {
+                const key = status === 'Review' ? 'review' : status.toLowerCase().replace(/\s+/g, '');
+                const el = document.getElementById(`count-${key}`);
+                if(el) el.textContent = counts[status];
+            });
+
+            // List Render
+            const tbody = document.getElementById('task-table-body');
+            tbody.innerHTML = '';
+            fTasks.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 dark:hover:bg-slate-700/30 transition";
+                tr.innerHTML = `
+                    <td class="py-4 px-6 font-semibold">${t.title}</td>
+                    <td class="py-4 px-6 text-slate-500"><span class="px-2.5 py-1 bg-slate-100 dark:bg-slate-700 rounded-lg text-xs">${t.project}</span></td>
+                    <td class="py-4 px-6"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusBadge(t.status)}">${t.status === 'Review' ? 'Buddy Review' : t.status}</span></td>
+                    <td class="py-4 px-6"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${getPriorityBadge(t.priority)}">${t.priority}</span></td>
+                    <td class="py-4 px-6 text-slate-500 text-xs">${t.duedate}</td>
+                    <td class="py-4 px-6 text-slate-600 dark:text-slate-300 text-xs font-medium">${t.assignee}</td>
+                    <td class="py-4 px-6 text-right space-x-2">
+                        <button onclick="editTask('${t.id}')" class="text-slate-400 hover:text-brand-500 transition"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteTask('${t.id}')" class="text-slate-400 hover:text-red-500 transition"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Activity Logs Render
+            const feed = document.getElementById('activity-feed');
+            feed.innerHTML = '';
+            activityLogs.slice(0, 5).forEach(l => {
+                feed.innerHTML += `
+                    <div class="flex items-start space-x-3 text-xs">
+                        <div class="w-2 h-2 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                        <div>
+                            <p class="font-medium text-slate-700 dark:text-slate-300">${l.text}</p>
+                            <span class="text-slate-400">${l.time}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Kanban Card Generator
+        function createKanbanCard(task) {
+            const card = document.createElement('div');
+            card.className = "bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition space-y-3";
+            card.draggable = true;
+            card.dataset.id = task.id;
+
+            card.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', task.id);
+                setTimeout(() => card.classList.add('opacity-40'), 0);
+            });
+            card.addEventListener('dragend', () => card.classList.remove('opacity-40'));
+
+            card.innerHTML = `
+                <div class="flex items-start justify-between">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${getPriorityBadge(task.priority)}">${task.priority}</span>
+                    <div class="space-x-1">
+                        <button onclick="editTask('${task.id}')" class="text-slate-400 hover:text-brand-500 text-xs"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteTask('${task.id}')" class="text-slate-400 hover:text-red-500 text-xs"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                <h4 class="font-semibold text-sm leading-snug">${task.title}</h4>
+                <p class="text-xs text-slate-400 line-clamp-2">${task.description || ''}</p>
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/50 text-[11px] text-slate-500">
+                    <span><i class="fa-regular fa-calendar mr-1"></i>${task.duedate}</span>
+                    <span class="font-medium bg-brand-50 dark:bg-brand-950 text-brand-600 dark:text-brand-300 px-2 py-0.5 rounded">${task.assignee || 'Unassigned'}</span>
+                </div>
+            `;
+            return card;
+        }
+
+        function getPriorityBadge(priority) {
+            switch(priority) {
+                case 'Urgent': return 'bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400';
+                case 'High': return 'bg-orange-100 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400';
+                case 'Medium': return 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-600 dark:text-yellow-400';
+                default: return 'bg-green-100 dark:bg-green-950/50 text-green-600 dark:text-green-400';
+            }
+        }
+
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'Completed': return 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400';
+                case 'In Progress': return 'bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400';
+                case 'Review': return 'bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400';
+                default: return 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+            }
+        }
+
+        // Drag & Drop handlers
+        function allowDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function removeDropStyle(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function dropTask(e, newStatus) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            const taskId = e.dataTransfer.getData('text/plain');
+            const task = tasks.find(t => t.id === taskId);
+            if (task && task.status !== newStatus) {
+                const oldStatus = task.status;
+                task.status = newStatus;
+                saveData();
+                addLog(`Moved "${task.title}" to ${newStatus === 'Review' ? 'Buddy Review' : newStatus}`);
+                showToast(`Task updated to ${newStatus === 'Review' ? 'Buddy Review' : newStatus}`);
+                renderAllViews();
+            }
+        }
+
+        // Task CRUD Modals
+        function renderTaskProjectDropdown() {
+            const select = document.getElementById('task-project');
+            select.innerHTML = '';
+            projects.forEach(p => {
+                select.innerHTML += `<option value="${p}">${p}</option>`;
+            });
+        }
+
+        function openTaskModal(defaultStatus = 'To Do') {
+            document.getElementById('task-modal-title').textContent = 'Create Buddy Task';
+            document.getElementById('task-id').value = '';
+            document.getElementById('task-title').value = '';
+            document.getElementById('task-status').value = defaultStatus;
+            document.getElementById('task-priority').value = 'Medium';
+            document.getElementById('task-duedate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('task-assignee').value = currentUser ? currentUser.buddy : '';
+            document.getElementById('task-description').value = '';
+            document.getElementById('task-modal').classList.remove('hidden');
+        }
+
+        function closeTaskModal() {
+            document.getElementById('task-modal').classList.add('hidden');
+        }
+
+        function saveTask(e) {
+            e.preventDefault();
+            const id = document.getElementById('task-id').value;
+            const title = document.getElementById('task-title').value;
+            const project = document.getElementById('task-project').value;
+            const status = document.getElementById('task-status').value;
+            const priority = document.getElementById('task-priority').value;
+            const duedate = document.getElementById('task-duedate').value;
+            const assignee = document.getElementById('task-assignee').value;
+            const description = document.getElementById('task-description').value;
+
+            if (id) {
+                const task = tasks.find(t => t.id === id);
+                if (task) {
+                    task.title = title;
+                    task.project = project;
+                    task.status = status;
+                    task.priority = priority;
+                    task.duedate = duedate;
+                    task.assignee = assignee;
+                    task.description = description;
+                    addLog(`Updated task "${title}"`);
+                    showToast('Task updated successfully');
+                }
+            } else {
+                const newTask = {
+                    id: Date.now().toString(),
+                    title, project, status, priority, duedate, assignee, description
+                };
+                tasks.push(newTask);
+                addLog(`Assigned task "${title}" to ${assignee}`);
+                showToast('Task created successfully');
+            }
+
+            saveData();
+            closeTaskModal();
+            renderAllViews();
+        }
+
+        function editTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+            document.getElementById('task-modal-title').textContent = 'Edit Buddy Task';
+            document.getElementById('task-id').value = task.id;
+            document.getElementById('task-title').value = task.title;
+            document.getElementById('task-project').value = task.project;
+            document.getElementById('task-status').value = task.status;
+            document.getElementById('task-priority').value = task.priority;
+            document.getElementById('task-duedate').value = task.duedate;
+            document.getElementById('task-assignee').value = task.assignee;
+            document.getElementById('task-description').value = task.description;
+            document.getElementById('task-modal').classList.remove('hidden');
+        }
+
+        function deleteTask(id) {
+            if (confirm('Are you sure you want to delete this task?')) {
+                const task = tasks.find(t => t.id === id);
+                tasks = tasks.filter(t => t.id !== id);
+                saveData();
+                if (task) addLog(`Deleted task "${task.title}"`);
+                showToast('Task deleted');
+                renderAllViews();
+            }
+        }
+
+        // Project Modal
+        function openProjectModal() {
+            document.getElementById('project-name-input').value = '';
+            document.getElementById('project-modal').classList.remove('hidden');
+        }
+
+        function closeProjectModal() {
+            document.getElementById('project-modal').classList.add('hidden');
+        }
+
+        function saveProject(e) {
+            e.preventDefault();
+            const name = document.getElementById('project-name-input').value.trim();
+            if(name && !projects.includes(name)) {
+                projects.push(name);
+                saveData();
+                renderProjects();
+                renderTaskProjectDropdown();
+                closeProjectModal();
+                addLog(`Created new project "${name}"`);
+                showToast('Project created successfully');
+            }
+        }
+
+        // Persistence & Helpers
+        function saveData() {
+            localStorage.setItem('buddytask_tasks', JSON.stringify(tasks));
+            localStorage.setItem('buddytask_projects', JSON.stringify(projects));
+            localStorage.setItem('buddytask_logs', JSON.stringify(activityLogs));
+        }
+
+        function addLog(text) {
+            activityLogs.unshift({ text, time: 'Just now' });
+            saveData();
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
